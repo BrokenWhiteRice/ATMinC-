@@ -45,7 +45,7 @@ Account::Account(string id, string pin, double balance)
     if (id.length() == 8) {
         setID(id);
     } else {
-        cerr << "Error" << endl;
+        cerr << "Invalid ID!" << endl;
     }
 
     // Check if PIN is digits only with 4 characters
@@ -65,14 +65,14 @@ Account::Account(string id, string pin, double balance)
     if (validPIN) {
         setPIN(pin);
     } else {
-        cerr << "Error" << endl;
+        cerr << "Invalid PIN!" << endl;
     }
 
     // Check if balance is >= 0.0
     if (balance >= 0.0) {
         setAccountBalance(balance);
     } else {
-        cerr << "Error" << endl;
+        cerr << "Invalid balance!" << endl;
     }
 }
 
@@ -169,18 +169,20 @@ public:
 int ATM::start() {
     int loginAttempts = 0;
 
+    // attempts no more than 3 times
     while (loginAttempts < 3) {
         cout << "Please enter your command\n"
-                "Q – quit/exit\n"
-                "L – login to account\n";
+                "Q - quit/exit\n"
+                "L - login to account\n";
 
         char choice;
         cin >> choice;
 
         switch (choice) {
             case 'Q':
-                cout << "Quit" << endl;
+                cout << "Goodbye." << endl;
                 return 0;
+                exit(1);
             case 'L':
                 cout << "Please enter Account ID: ";
                 string id, pin;
@@ -188,15 +190,18 @@ int ATM::start() {
                 cout << "Please enter PIN: ";
                 cin >> pin;
 
-                Account& foundAccount = bank.findAcct(id, pin);
+                // check if we have account
+                Account & foundAccount = bank.findAcct(id, pin);
 
                 if (foundAccount.getID().empty()) {
-                    cout << "Sorry – no match" << endl;
+                    cout << "Sorry - no match" << endl;
                     loginAttempts++;
                     cout << "Login attempts remaining: " << 3 - loginAttempts << endl;
                 } else {
                     cout << "Account found" << endl;
                     transactions(foundAccount);
+
+                    // reset attempt if found one
                     loginAttempts = 0;
                 }
                 break;
@@ -208,7 +213,8 @@ int ATM::start() {
 }
 
 // Implementation of transactions method
-void ATM::transactions(Account& acct) {
+// present with menu to perform withdrawl, deposit, check balance, quit
+void ATM::transactions(Account & acct) {
     while (true) {
         cout << "Please enter your selection or Q to quit.\n"
                 "W - withdraw funds\n"
@@ -226,4 +232,57 @@ void ATM::transactions(Account& acct) {
                 cin >> withdrawalAmount;
 
                 if (acct.Withdraw(withdrawalAmount)) {
-                    cout << "Withdrawal successful." << endl;
+                    cout << "Successfully withdraw." << endl;
+                }
+                break;
+            case 'D':
+                cout << "Please enter amount of deposit: ";
+                double depositAmount;
+                cin >> depositAmount;
+
+                acct.Deposit(depositAmount);
+                cout << "Successfully deposit." << endl;
+                break;
+            case 'B':
+                acct.Balance();
+                break;
+            case 'Q':
+                cout << "Goodbye." << endl;
+                return;
+            default:
+                cout << "Unrecognized command " << choice << endl;
+                break;
+        }
+    }
+}
+
+// Main function
+int main() {
+    ifstream inf;
+    Bank bk;
+
+    string filePath;
+    cout << "Enter path for account information: ";
+    cin >> filePath;
+
+    inf.open(filePath);
+    if (!inf) {
+        cerr << "Error. Exiting program." << endl;
+        return 1;
+    }
+
+    bk.loadAccounts(inf);
+    inf.close();
+
+    ATM atm(bk);
+
+    int result = atm.start();
+
+    if (result == 0) {
+        cout << "Normal Exit" << endl;
+    } else if (result == 1) {
+        cout << "Account not found - system shutting down" << endl;
+    }
+
+    return 0;
+}
